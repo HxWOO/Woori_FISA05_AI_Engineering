@@ -8,7 +8,3 @@
 - 실제 예제를 통해 여러가지 모델이 머신러닝과 딥러닝에 어떻게 적용되는지 이해할 수 있다.
 
 ![image.png](image.png)
-
----
-
-[1주차](https://www.notion.so/1-22315742ec6380ddbe57ce7ba83a8c1d?pvs=21)
