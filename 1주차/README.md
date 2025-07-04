@@ -275,3 +275,204 @@ if (clean_name := normalize(name)) in allowed_names]
 - 변수의 스코프를 좁혀 불필요한 변수 최소화
 
 ---
+
+## 🟢 4일차
+
+---
+
+### 🔁 Iterable 객체
+
+- 내부에 여러 요소를 가지고 있으며, *한 번에 하나씩* 꺼낼 수 있는 **반복(iteration) 가능한 객체**
+- **리스트, 문자열, 집합(Set), 딕셔너리** 등이 대표적
+- 파이썬에서는 `for`문 등 반복문에서 활용 가능
+
+#### ✨ 특징
+
+- **반복 가능:** `for`문 등에서 사용
+- **프로토콜 만족:**  
+  - `__iter__()` 메서드가 있어야 하며, 이 메서드는 이터레이터(iterator) 객체를 반환
+  - 이터레이터는 `__next__()` 메서드로 요소를 하나씩 반환
+
+#### 🔎 iterable vs iterator
+
+| 구분 | iterable(이터러블) | iterator(이터레이터) |
+| :-- | :-- | :-- |
+| 정의 | 반복 가능한 객체 | 실제로 반복을 수행하는 객체 |
+| 예시 | 리스트, 문자열, 집합, 딕셔너리 등 | `iter()` 결과, 리스트의 이터레이터 등 |
+| 필수 메서드 | `__iter__()` | `__iter__()`, `__next__()` |
+| 사용 목적 | 반복문에 전달해 반복 시작 | 반복문 내부에서 실제 값 반환 |
+
+#### 🛠️ 직접 iterator 만들기
+
+```python
+class CountUpTo:
+def init(self, max):
+self.max = max
+self.current = 1
+
+def __iter__(self):
+    return self
+
+def __next__(self):
+    if self.current > self.max:
+        raise StopIteration
+    self.current += 1
+    return self.current - 1
+
+#사용 예시
+counter = CountUpTo(5)
+for number in counter:
+print(number)
+```
+
+---
+
+### 📝 Docstring
+
+- **모듈, 함수, 클래스, 메서드** 정의 바로 아래에 위치하는 문자열
+- 코드 블록의 **용도, 사용법, 동작 방식**을 문서화
+- `__doc__` 속성 또는 `help()` 함수로 확인 가능
+
+#### ✏️ 작성법
+
+- **모듈:** 파일 맨 위
+- **클래스/함수/메서드:** 선언 직후, 첫 줄에 큰따옴표 3개(`"""`)로 작성
+
+```python
+def add(a, b):
+"""
+두 숫자를 더한 값을 반환합니다.
+Args:
+    a (int): 첫 번째 숫자
+    b (int): 두 번째 숫자
+
+Returns:
+    int: 두 숫자의 합
+"""
+return a + b
+```
+
+#### 💡 특징 & 활용
+
+- 코드의 사용법, 인자, 반환값, 예외 등 설명 가능
+- 자동 문서화 도구(Sphinx 등)에서 활용
+- 유지보수, 협업, 재사용성 향상
+
+---
+
+### 🛠️ Destructive & Undestructive Function
+
+#### ⚠️ Destructive function (파괴적 함수)
+
+- **입력 객체(특히 mutable)의 내부 상태를 직접 변경**
+- 예시: 리스트의 `append()`, `sort()` 등
+
+```python
+def destructive_append(lst, item):
+lst.append(item) # 원본 리스트가 변경됨
+```
+
+
+#### 🟢 Undestructive function (비파괴적 함수)
+
+- **입력 객체를 변경하지 않고, 새로운 객체 반환**
+- 예시: `sorted()`, `+` 연산 등
+
+```python
+def undestructive_append(lst, item):
+return lst + [item] # 새로운 리스트 반환, 원본은 그대로
+```
+
+| 구분 | Destructive function | Undestructive function |
+| :-- | :-- | :-- |
+| 원본 객체 변화 | 변경됨 | 변경되지 않음 |
+| 반환 값 | 보통 None 또는 변경된 객체 | 보통 새로운 객체 |
+| 예시 | `list.append()`, `sort()` | `sorted()`, `+` 연산 |
+| 사용 목적 | 메모리 절약, 직접 수정 | 안전성, 불변성 유지 |
+
+---
+
+### 🌟 가변 인자: *args, **kwargs
+
+- **함수 인자의 개수/형식을 유연하게 처리**  
+- 대표적으로 `*args`, `**kwargs` 사용
+
+#### *args
+
+- 여러 **위치 인자**를 하나의 튜플로 받음
+
+```python
+def print_args(*args):
+for arg in args:
+print(arg)
+
+print_args(1, 2, 3) # 1, 2, 3 출력
+```
+
+#### **kwargs
+
+- 여러 **키워드 인자**를 하나의 딕셔너리로 받음
+
+```python
+def print_kwargs(**kwargs):
+for key, value in kwargs.items():
+print(key, value)
+
+print_kwargs(name="Alice", age=30)
+
+#name Alice
+#age 30
+```
+
+#### *args와 **kwargs 함께 쓰기
+
+- 항상 `*args`가 먼저, `**kwargs`가 나중에 와야 함
+
+
+| 구분 | 역할 | 함수 내 자료형 |
+| :-- | :-- | :-- |
+| *args | 위치 인자를 튜플로 받음 | tuple |
+| **kwargs | 키워드 인자를 딕셔너리로 받음 | dict |
+
+---
+
+### 🪄 Decorator
+
+- **함수나 메서드 코드를 직접 수정하지 않고, 기능을 확장/변경**하는 문법
+- `@데코레이터이름` 형태로 함수 선언부 위에 사용
+- 다른 함수를 인자로 받아, 새로운 함수를 반환하는 **고차 함수**
+
+#### 🏗️ 기본 사용법
+
+```python
+def my_decorator(func):
+def wrapper():
+print("함수 실행 전")
+func()
+print("함수 실행 후")
+return wrapper
+
+@my_decorator
+def say_hello():
+print("Hello!")
+
+say_hello()
+
+#함수 실행 전
+#Hello!
+#함수 실행 후
+```
+
+#### 💡 활용 예시
+
+- 로깅(logging)
+- 실행 시간 측정
+- 입력값 검증
+- 접근 권한 제어
+
+#### 📝 참고
+
+- 데코레이터 사용 시 `functools.wraps`로 원본 함수 메타정보 보존 권장
+- 여러 데코레이터 중첩 적용 가능
+
+---
