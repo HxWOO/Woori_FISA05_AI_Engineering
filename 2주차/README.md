@@ -5,3 +5,5 @@
 - [**5일차: 함수형 프로그래밍과 주요 내장 기능**](./5_day.md)
 - [**6일차: 모듈, 패키지, 예외 처리, 클래스 기초**](./6_day.md)
 - [**7일차: 클래스 심화 (상속, 매직 메서드 등)**](./7_day.md)
+- [**8일차: Numpy (Numeric Python)**](./8_day.md)
+- [**9일차: Pandas (Python Data Analysis Library)**](./9_day.md)
