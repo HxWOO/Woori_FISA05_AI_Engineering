@@ -273,11 +273,32 @@ SELECT STR_TO_DATE('2024-04-21', '%Y-%m-%d') CONV1; -- 'YYYY-MM-DD'
  관객수가 10만 이상인 영화의 
  월별, 영화 유형별 관객 소계를 구하는 쿼리 */
 
+SELECT month(release_date) as 월별, movie_type, sum(audience) as 관객수,
+	IF(GROUPING(movie_type) = 1, '소계', movie_type)  -- grouping 함수는 rollup으로 생성된 그룹화된 데이터의 null이면 1을 return. 값을 구별할 수 있음
+FROM movies
+WHERE year(release_date)=2019 and quarter(release_date)=1 -- and audience>=100000 
+group by movie_type, month(release_date)
+with rollup -- group by 했을때, 전체의 소계를 해주는 명령어
+order by month(release_date), movie_type;
+
 
 /* 2. 2019년 개봉 영화 중 매출액이 천만 원 이상인 영화의 월별(MONTH), 
 	영화 유형별 관객 소계를 구하되
 	7월 1일 전에 개봉한 영화이면 상반기,
 	7월 1일 이후에 개봉한 영화이면 하반기라고 함께 출력하는 쿼리 */
+-- SELECT CASE month(release_date) 
+-- 		when month(release_date) between 1 and 6 then '상반기'
+-- 		else '하반기'
+--     END Half, genre, sum(audience)
+-- FROM movies
+-- WHERE year(release_date)=2019 and revenue>=10000000
+-- group by 
+-- 	CASE 
+-- 		when month(release_date) between 1 and 6 then '상반기'
+-- 		else '하반기' End,
+-- 		genre
+-- order by Half, genre;
+
 
 /* 3. 부제가 있는 영화 찾기 ':' 2015년 이후의 개봉영화 중에서 
 부제가 달려있는 영화의 개수 세어보기 */
