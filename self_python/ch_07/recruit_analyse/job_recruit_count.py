@@ -31,6 +31,6 @@ if __name__ == "__main__":
     body = parse_recruit_count_saramin(page)  # 코스피 수집
     dumped = json.dumps(dict(body=body),
                         ensure_ascii=False, indent=2)
-    OUT_1_3.write_text(dumped, encoding="utf-8")  # JSON으로 저장
+    OUT_JOB_REC.write_text(dumped, encoding="utf-8")  # JSON으로 저장
     browser.close()
     play.stop()
