@@ -19,7 +19,7 @@ def parse_recruit_count_saramin(page:Page) -> list[str]:
         .locator("div > div > div > div ") \
         .locator("div > div > div > div > div ") \
         .locator("ul > li > button > span")
-    # 선택한 직종의 총 공고 수 의 위치 
+    # 선택한 (직종, 총 공고 수) 리스트를 받음
     job.all()
     body = [tr.all_inner_texts() for tr in job.all()]
 
