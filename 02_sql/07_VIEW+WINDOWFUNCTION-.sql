@@ -139,7 +139,8 @@ FROM 테이블명;
 -- ORDER BY를 포함한 쿼리문에서 특정 컬럼의 순위를 구하는 함수
 -- PARTITION 내에서 순위를 구할 수도 있고 전체 데이터에 대한 순위를 구할 수도 있다. 
 -- 동일한 값에 대해서는 같은 순위를 부여하며 중간 순위를 비운다.
-
+SELECT job, ename, sal, RANK() OVER (PARTITION BY job ORDER BY sal DESC) AS 연봉순위 FROM emp; 
+UPDATE emp SET job='SALESMAN' WHERE ename='신짱구';
 
  
 /* 2) DENSE_RANK (밀집, 밀도)
@@ -167,24 +168,112 @@ ROW_NUMBER은 동일한 값이어도 고유한 순위를 부여한다.
 /* 윈도우 안에서 특정 값을 찾아내는 함수 
 1) FIRST_VALUE
 파티션별 윈도우에서 가장 먼저 나온 값을 구한다. MIN과 같음.
+*/
+use fisa;
+SELECT job, ename, sal, LAST_VALUE(sal) OVER (PARTITION BY job ORDER BY sal) AS 젤덜받는사람 FROM emp; 
+SELECT job, ename, sal, FIRST_VALUE(sal) OVER (PARTITION BY job ORDER BY sal  DESC) AS 젤더받는사람 FROM emp; 
 
+
+/*
 2) LAST_VALUE
 파티션별 윈도우에서 가장 마지막에 나온 값을 구한다.
+-- WINDOWING을 작성하지 않으면 의도한대로 나오지 않는 경우들이 종종 있습니다.
 
-3) LAG
-이전 몇 번째 행의 값을 가져오는 함수. 인자를 최대 3개까지 가진다.
-두번째 인자는 몇 번째 앞의 행을 가져올지 결정하는 것이며 DEFAULT값은 1이다. 
-세번째 인자는 가져올 행이 없을 경우 DEFAULT값을 지정해준다.
+BETWEEN A AND B로 묶어서 사용합니다. 
 
-4) LEAD
-이후 몇 번째 행의 값을 가져오는 함수로 LAG와 마찬가지로 인자를 최대 3개까지 갖는다. */
+UNBOUNDED PRECEDING : 현재 PARTION의 가장 첫행부터
+UNBOUNDED FOLLOWING : 현재 PARTION의 가장 마지막행까지 
+N PRECEDING : 위로 N행
+N FOLLOWING : 다음으로 N행
+CURRENT ROW : 현재행까지
+*/
+SELECT job, ename, sal, LAST_VALUE(sal) 
+	OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS 젤덜받는사람 FROM emp;  -- 보통 BETWEEN으로 windowing 많이 함 
+SELECT job, ename, sal, FIRST_VALUE(sal) OVER (PARTITION BY job ORDER BY sal  DESC) AS 젤더받는사람 FROM emp; 
 
+
+-- 누적합 계산
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    SUM(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_sal
+FROM 
+    emp;
+
+-- 이동평균 계산: 현재 행과 이전 두 행의 평균
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    AVG(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg
+FROM 
+    emp;
+
+-- 특정 범위 내의 합계: 현재 행과 다음 두 행의 합계
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    SUM(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING) AS range_sum
+FROM 
+    emp;
+
+-- 누적합 계산
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    SUM(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_sal
+FROM 
+    emp;
+
+-- 이동평균 계산: 현재 행과 이전 두 행의 평균
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    AVG(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN 2 PRECEDING AND CURRENT ROW) AS moving_avg
+FROM 
+    emp;
+
+-- 특정 범위 내의 합계: 현재 행과 다음 두 행의 합계
+SELECT 
+    empno,
+    ename, 
+    job, 
+    sal, 
+    SUM(sal) OVER (PARTITION BY job ORDER BY sal DESC ROWS BETWEEN CURRENT ROW AND 2 FOLLOWING) AS range_sum
+FROM 
+    emp;
+
+
+-- 3) LAG
+-- 이전 몇 번째 행의 값을 가져오는 함수. 인자를 최대 3개까지 가진다.
+-- 두번째 인자는 몇 번째 앞의 행을 가져올지 결정하는 것이며 DEFAULT값은 1이다. 
+-- 세번째 인자는 가져올 행이 없을 경우 DEFAULT값을 지정해준다.
+
+-- 4) LEAD
+-- 이후 몇 번째 행의 값을 가져오는 함수로 LAG와 마찬가지로 인자를 최대 3개까지 갖는다. */
 -- LAG / LEAD : 2번째 인자로는 지금 기준으로 몇개 밀려난 순서에서 값을 가지고 올 것인지를 정해줍니다 
+-- LAG / LEAD : NULL인 경우 들어갈 디폴트값이 세번째 인자로 
 
-
-
- -- LAG / LEAD : NULL인 경우 들어갈 디폴트값이 세번째 인자로 
-
+-- box_office.movies에서 상영관(screens)이 가장 많은 순서대로 
+-- 연도별로(YEAR(release_date)) RANK를 매겨주시고, 
+-- 가장 많이 상영관을 차지한 영화의 상영관수를 최다상영관수라는 컬럼에 함께 출력해주세요..
+-- screeens나 year이 NULL인 값은 제외 
+-- 전체 년도는 최근게 앞으로 (DESC) 
+use box_office;
+SELECT TITLE, YEAR(release_date), screens, RANK() OVER (PARTITION BY YEAR(release_date) ORDER BY screens DESC) as 상영관순위,
+		FIRST_VALUE(screens) OVER (PARTITION BY YEAR(release_date) ORDER BY screens DESC) as 최다상영관수
+FROM movies
+WHERE release_date IS NOT NULL OR screens IS NOT NULL
+ORDER BY YEAR(release_date) DESC, screens DESC;
 
 
 /* 4. 그룹 내 비율 함수
@@ -192,16 +281,19 @@ ROW_NUMBER은 동일한 값이어도 고유한 순위를 부여한다.
 */
 
 -- 최대값 기준으로 현재 행의 값이 몇 퍼센트 백분위인지 
-
-
 -- 부서별로 직원들이 최대임금 대비 몇퍼센트 정도 임금을 받고 있는지
+use fisa;
+SELECT * FROM emp;
 
+SELECT deptno, job, ename, sal, round(sal/MAX(sal) OVER (PARTITION BY deptno ORDER BY deptno) * 100, 2) as '부서별 최대임금 대비 비율(%)'
+FROM emp
+ORDER BY deptno, sal;
 
 -- 누적비율 CUME_DIST
 
 
 -- NTILE : 전체 데이터를 특정 기준으로 N개의 그룹으로 나눌 때 
-
+-- 구간을 나누는 bin 처럼 작동함
 
 /* 일반 집계 함수:	SUM, MAX, MIN, AVG, COUNT	
 순위 함수: RANK 1 1 3, DENSE_RANK 1 1 2, ROW_NUMBER
@@ -209,35 +301,35 @@ ROW_NUMBER은 동일한 값이어도 고유한 순위를 부여한다.
 그룹 내 비율 함수:	PERCENT_RANK, CUME_DIST, NTILE 등
 */
 -- 현재 회사에서 2번째로 돈을 많이 받는 사람은 누구일까요?
-
+SELECT e.deptno, e.job, e.ename, e.sal, e.월급순위
+FROM (SELECT deptno, job, ename, sal, RANK() OVER( ORDER BY sal DESC) as '월급순위'
+FROM emp) as e
+WHERE e.월급순위=2;
 
 -- 부서별로 돈을 가장 적게 받는 사람
-
-
+SELECT e.deptno, e.job, e.ename, e.sal, e.월급낮은순
+FROM (SELECT deptno, job, ename, sal, RANK() OVER(PARTITION BY deptno ORDER BY sal ASC) as '월급낮은순'
+FROM emp) as e
+WHERE e.월급낮은순=1;
 
 -- 부서별로 가장 돈을 많이 받는 사람만 확인할 수 있게 쿼리로 만들어서 결과를 출력해주세요
+SELECT e.deptno, e.job, e.ename, e.sal, e.월급순
+FROM (SELECT deptno, job, ename, sal, RANK() OVER(PARTITION BY deptno ORDER BY sal DESC) as '월급순'
+FROM emp) as e
+WHERE e.월급순=1;
 
 
 
 -- 부서별로 가장 돈을 많이 받는 사람을 'MAXIMUM'이라는 컬럼에 별도로 출력해주세요 
-	
-	
 
+WITH e2 as 
+(SELECT e.deptno, e.job, e.ename, e.sal, e.월급순 
+	FROM (SELECT deptno, job, ename, sal, RANK() OVER(PARTITION BY deptno ORDER BY sal DESC, ename) as '월급순'
+						FROM emp) as e 
+                        WHERE e.월급순=1)
+SELECT e1.deptno, e1.job, e1.ename, e1.sal, e2.ename as MAXIMUM
+FROM emp e1, e2
+WHERE e1.deptno = e2.deptno;
 
-
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-
-
+SELECT deptno, job, ename, sal, FIRST_VALUE(sal) OVER(PARTITION BY deptno ORDER BY sal ASC) as MAXIMUM
+FROM emp;
