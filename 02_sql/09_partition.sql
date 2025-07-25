@@ -115,3 +115,4 @@ EXPLAIN SELECT title FROM movies_p WHERE year(release_date) BETWEEN 2014 AND 201
 
 --  컬럼 그대로 비교 → 프루닝 성공
 EXPLAIN SELECT title FROM movies_p WHERE release_date >= '2014-01-01' AND release_date < '2018-01-01'
+
