@@ -1,0 +1,7 @@
+datakart
+matplotlib
+openpyxl
+pandas
+requests
+seaborn
+python-dotenv
