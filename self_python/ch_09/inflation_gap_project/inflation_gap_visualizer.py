@@ -2,6 +2,7 @@ import requests
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
+import pymysql
 from dotenv import load_dotenv
 import os
 
@@ -15,6 +16,57 @@ plt.rcParams['axes.unicode_minus'] = False # 마이너스 부호 깨짐 방지
 load_dotenv()
 ECOS_API_KEY = os.getenv("ECOS_API_KEY")
 
+def make_connection():
+    HOST = os.getenv("MYSQL_HOST")
+    PORT = os.getenv("MYSQL_PORT")
+    USER = os.getenv("MYSQL_USER")
+    PASSWD = os.getenv("MYSQL_PWD")
+    DB = os.getenv("MYSQL_DB")
+
+    connection = pymysql.connect(
+        host=HOST,     # MySQL Server Address
+        port=int(PORT),          # MySQL Server Port
+        user=USER,      # MySQL username
+        passwd=PASSWD,    # password for MySQL username
+        db=DB,       # Database name
+        charset='utf8mb4'
+    )
+    return connection
+
+def save_data_in_mysql(datas: pd.DataFrame, connection: pymysql.Connection):
+    cursor = connection.cursor()
+    # 데이터베이스는 이미 만들어졌다고 가정. 필요시 별도로 만들고 연결.
+    # 테이블 생성 (없으면 생성)
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS practice (
+        Time DATE NOT NULL,
+        DATA_VALUE FLOAT NOT NULL,
+        PRIMARY KEY (Time)
+    )
+    """
+    try:
+        cursor.execute(create_table_sql)
+        connection.commit()
+
+        # 데이터 삽입, 이미 존재하는 날짜는 업데이트하는 방식(옵션)
+        insert_sql = """
+        INSERT INTO practice (Time, DATA_VALUE) VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE DATA_VALUE = VALUES(DATA_VALUE)
+        """
+
+        for _, row in datas.iterrows():
+            # 날짜를 YYYY-MM-DD 형식으로 변환
+            date_str = row.name.strftime('%Y-%m-%d') if isinstance(row.name, pd.Timestamp) else str(row['TIME'])
+            data_value = float(row['DATA_VALUE'])
+            cursor.execute(insert_sql, (date_str, data_value))
+
+        connection.commit()
+    except Exception as e:
+        print("MySQL 작업 중 오류 발생:", e)
+    finally:
+        cursor.close()
+        connection.close()
+
 def get_ecos_data(stat_code, start_date, end_date, stat_item_code, freq='M'):
     """ECOS API를 통해 경제 지표 데이터를 가져오는 함수"""
     url = f"https://ecos.bok.or.kr/api/StatisticSearch/{ECOS_API_KEY}/json/kr/1/1000/{stat_code}/{freq}/{start_date}/{end_date}/{stat_item_code}"
@@ -25,8 +77,11 @@ def get_ecos_data(stat_code, start_date, end_date, stat_item_code, freq='M'):
     if 'StatisticSearch' in data and 'row' in data['StatisticSearch']:
         df = pd.DataFrame(data['StatisticSearch']['row'])
         df['TIME'] = pd.to_datetime(df['TIME'], format='%Y%m')
+        connection = make_connection()
+        save_data_in_mysql(df, connection)
         df.set_index('TIME', inplace=True)
         df['DATA_VALUE'] = pd.to_numeric(df['DATA_VALUE'])
+
         return df[['DATA_VALUE']]
     else:
         print(f"데이터를 가져오지 못했습니다: {data}")
