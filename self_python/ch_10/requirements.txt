@@ -1,0 +1,7 @@
+datakart
+matplotlib
+openpyxl
+pandas
+python-docx
+seaborn
+python-dotenv
