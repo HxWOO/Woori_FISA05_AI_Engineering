@@ -1,4 +1,4 @@
-# 📜 ELK - Logstash & Filebeat 학습일지
+# 📜 ELK - Logstash & Filebeat
 
 ## 🪵 Logstash
 
