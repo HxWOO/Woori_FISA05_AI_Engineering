@@ -1,3 +1,4 @@
 ## 📚 8주차 학습 내용
 
-- [🤖 Elasticsearch와 로컬 LLM(Qwen3)을 활용한 RAG 시스템 구축](./33_day.md)
+- [🎞️ Elasticsearch와 로컬 LLM(Qwen3)을 활용한 RAG 시스템 구축](./33_day.md)
+- [🤖 머신러닝 기초: 통계부터 딥러닝까지](./34_day.md)
