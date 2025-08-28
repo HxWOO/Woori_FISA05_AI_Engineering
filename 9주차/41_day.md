@@ -1,10 +1,14 @@
-# 🗺️ 비지도 학습과 PCA
+# 🗺️ 비지도 학습과 PCA, 그리고 매니폴드 학습
 
 ## 🎯 목차
 1. [차원의 저주 (The Curse of Dimensionality)](#1-🧐-차원의-저주-the-curse-of-dimensionality)
 2. [주성분 분석 (Principal Component Analysis, PCA)](#2-🧠-주성분-분석-principal-component-analysis-pca)
-3. [PCA 실습: 와인 데이터셋](#3-🚀-pca-실습-와인-데이터셋)
-4. [요약 정리](#4-✍️-요약-정리)
+3. [PCA 실습: 붓꽃 데이터셋](#3-🚀-pca-실습-붓꽃-데이터셋)
+4. [PCA 실습: 이미지 데이터 (MNIST)](#4-🖼️-pca-실습-이미지-데이터-mnist)
+5. [매니폴드 학습 (Manifold Learning)과 t-SNE](#5-🎨-매니폴드-학습manifold-learning과-t-sne)
+6. [PCA 응용: 고유 얼굴 (Eigenface)](#6-🧑-pca-응용-고유-얼굴-eigenface)
+7. [PCA 응용: 위스콘신 유방암 데이터셋 (파이프라인)](#7-🩺-pca-응용-위스콘신-유방암-데이터셋-파이프라인)
+8. [요약 정리](#8-✍️-요약-정리)
 
 ---
 
@@ -46,119 +50,282 @@
 
 ---
 
-## 3. 🚀 PCA 실습: 와인 데이터셋
+## 3. 🚀 PCA 실습: 붓꽃 데이터셋
+
+4차원의 붓꽃 데이터를 2차원으로 압축하여 시각화하고, 원본 데이터와 PCA 변환 데이터의 분류 성능을 비교한다.
 
 ### 데이터 준비 및 스케일링
+
+- PCA는 여러 속성의 스케일에 영향을 받으므로, **PCA 적용 전 각 속성을 동일한 스케일로 변환**하는 것이 중요하다.
+- `StandardScaler`를 사용하여 모든 속성 값을 평균 0, 분산 1인 표준 정규 분포로 변환한다.
 
 ```python
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.datasets import load_wine
-from sklearn.model_selection import train_test_split
+from sklearn.datasets import load_iris
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import cross_val_score
 
 # 데이터 로드
-wine = load_wine()
-wine_df = pd.DataFrame(data=wine.data, columns=wine.feature_names)
-wine_df['target'] = wine.target
+iris = load_iris()
+iris_df = pd.DataFrame(iris.data, columns=iris.feature_names)
+iris_df['target'] = iris.target
 
-# 데이터와 타겟 분리
-X = wine_df.drop('target', axis=1)
-y = wine_df['target']
+# 원본 데이터 시각화 (sepal length vs sepal width)
+markers=['^','s','o']
+for i, marker in enumerate(markers):
+    x_axis_data = iris_df[iris_df['target']==i]['sepal_length']
+    y_axis_data = iris_df[iris_df['target']==i]['sepal_width']
+    plt.scatter(x_axis_data, y_axis_data, marker=marker, label=iris.target_names[i])
+
+plt.legend()
+plt.xlabel('sepal length')
+plt.ylabel('sepal width')
+plt.show()
 
 # 데이터 스케일링
-scaler = StandardScaler()
-X_scaled = scaler.fit_transform(X)
+iris_scaled = StandardScaler().fit_transform(iris_df.iloc[:,:-1])
 ```
 
 ### PCA 적용 및 시각화
 
 ```python
-from sklearn.decomposition import PCA
-
-# PCA 모델 생성 (2차원으로 축소)
+# 2차원으로 PCA 변환
 pca = PCA(n_components=2)
-X_pca = pca.fit_transform(X_scaled)
+iris_pca = pca.fit_transform(iris_scaled)
+
+# PCA 데이터프레임 생성
+pca_columns=['pca_component_1','pca_component_2']
+irisDF_pca = pd.DataFrame(iris_pca, columns=pca_columns)
+irisDF_pca['target'] = iris.target
 
 # PCA 결과 시각화
-plt.figure(figsize=(8, 6))
-for i in range(len(wine.target_names)):
-    plt.scatter(X_pca[y == i, 0], X_pca[y == i, 1], label=wine.target_names[i])
+markers=['^','s','o']
+for i, marker in enumerate(markers):
+    x_axis_data = irisDF_pca[irisDF_pca['target']==i]['pca_component_1']
+    y_axis_data = irisDF_pca[irisDF_pca['target']==i]['pca_component_2']
+    plt.scatter(x_axis_data, y_axis_data, marker=marker, label=iris.target_names[i])
 
-plt.title('PCA of Wine Dataset')
-plt.xlabel('Principal Component 1')
-plt.ylabel('Principal Component 2')
 plt.legend()
-plt.grid(True)
+plt.xlabel('pca_component_1')
+plt.ylabel('pca_component_2')
 plt.show()
 ```
 
-### 설명된 분산 (Explained Variance)
-
-```python
-# 각 주성분이 설명하는 분산의 비율
-print("Explained variance ratio:", pca.explained_variance_ratio_)
-# [0.36198848 0.1920749 ]
-
-# 두 주성분으로 설명되는 총 분산
-print("Sum of explained variance ratio:", np.sum(pca.explained_variance_ratio_))
-# 0.5540633847175112
-```
-- 첫 번째 주성분(PC1)은 약 36.2%의 분산을, 두 번째 주성분(PC2)은 약 19.2%의 분산을 설명했다.
-- 2개의 주성분만으로 전체 데이터 분산의 약 55.4%를 설명할 수 있었다.
-
 ### 원본 데이터와 PCA 변환 데이터의 분류 성능 비교
 
-#### 로지스틱 회귀
-
 ```python
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score
+# 랜덤 포레스트 분류기 사용
+rcf = RandomForestClassifier(random_state=156)
 
-# 원본 데이터로 학습
-X_train, X_test, y_train, y_test = train_test_split(X_scaled, y, test_size=0.3, random_state=42)
-lr_original = LogisticRegression()
-lr_original.fit(X_train, y_train)
-pred_original = lr_original.predict(X_test)
-acc_original = accuracy_score(y_test, pred_original)
-print(f"원본 데이터 정확도: {acc_original:.4f}") # 1.0000
+# 원본 데이터로 교차 검증
+scores = cross_val_score(rcf, iris.data, iris.target, scoring='accuracy', cv=3)
+print('원본 데이터 교차 검증 개별 정확도:', scores)
+print('원본 데이터 평균 정확도:', np.mean(scores))
 
-# PCA 데이터로 학습
-X_train_pca, X_test_pca, y_train_pca, y_test_pca = train_test_split(X_pca, y, test_size=0.3, random_state=42)
-lr_pca = LogisticRegression()
-lr_pca.fit(X_train_pca, y_train_pca)
-pred_pca = lr_pca.predict(X_test_pca)
-acc_pca = accuracy_score(y_test_pca, pred_pca)
-print(f"PCA 변환 데이터 정확도: {acc_pca:.4f}") # 0.9815
+# PCA 데이터로 교차 검증
+pca_X = irisDF_pca[['pca_component_1','pca_component_2']]
+scores_pca = cross_val_score(rcf, pca_X, iris.target, scoring='accuracy', cv=3)
+print('PCA 변환 데이터 교차 검증 개별 정확도:', scores_pca)
+print('PCA 변환 데이터 평균 정확도:', np.mean(scores_pca))
 ```
-- **결과:** 13개의 특성을 모두 사용했을 때 정확도는 1.0이었지만, 2개의 주성분만 사용했을 때도 약 0.98의 높은 정확도를 보였다. 차원을 크게 줄였음에도 성능 저하가 거의 없음을 확인했다.
-
-#### 결정 트리
-
-```python
-from sklearn.tree import DecisionTreeClassifier
-
-# 원본 데이터로 학습
-dt_original = DecisionTreeClassifier(random_state=42)
-dt_original.fit(X_train, y_train)
-pred_original_dt = dt_original.predict(X_test)
-acc_original_dt = accuracy_score(y_test, pred_original_dt)
-print(f"원본 데이터 정확도 (DT): {acc_original_dt:.4f}") # 0.9444
-
-# PCA 데이터로 학습
-dt_pca = DecisionTreeClassifier(random_state=42)
-dt_pca.fit(X_train_pca, y_train_pca)
-pred_pca_dt = dt_pca.predict(X_test_pca)
-acc_pca_dt = accuracy_score(y_test_pca, pred_pca_dt)
-print(f"PCA 변환 데이터 정확도 (DT): {acc_pca_dt:.4f}") # 0.9259
-```
-- **결과:** 결정 트리 모델에서도 PCA를 통해 차원을 축소한 데이터가 원본 데이터와 유사한 수준의 정확도를 유지하는 것을 볼 수 있었다.
+- **결과:** 4개의 특성을 2개의 주성분으로 줄였음에도, 원본 데이터의 평균 정확도(약 0.96)와 PCA 변환 데이터의 평균 정확도(약 0.89) 사이에 큰 차이가 나지 않았다. 이는 PCA가 정보 손실을 최소화하며 효과적으로 차원을 축소했음을 보여준다.
 
 ---
 
-## 4. ✍️ 요약 정리
+## 4. 🖼️ PCA 실습: 이미지 데이터 (MNIST)
+
+784차원(28x28 픽셀)의 MNIST 숫자 이미지 데이터를 PCA를 이용해 저차원으로 압축하고 복원하여 시각적으로 확인한다.
+
+### PCA 알고리즘 구현
+
+```python
+import numpy as np
+import scipy
+import scipy.stats
+from sklearn.datasets import fetch_openml
+import matplotlib.pyplot as plt
+
+# 데이터 로드 및 정규화
+MNIST = fetch_openml('mnist_784', version=1)
+images = MNIST['data'].to_numpy().astype(np.double) / 255.
+
+# 1. 정규화 (평균 제거)
+def normalize(X):
+    mu = np.mean(X, axis=0)
+    Xbar = X - mu
+    return Xbar, mu
+
+# 2. 공분산 행렬의 고유값/고유벡터 계산
+def eig(S):
+    eig_vals, eig_vecs = np.linalg.eig(S)
+    sort_indices = np.argsort(eig_vals)[::-1] # 내림차순 정렬
+    return eig_vals[sort_indices], eig_vecs[:, sort_indices]
+
+# 3. 주성분으로 데이터 복원 (사영)
+def reconstruct(X, PC):
+    return (X @ PC) @ PC.T
+
+# PCA 알고리즘
+def PCA(images, num_components, num_data=1000):
+    X = images[:num_data]
+    N, D = X.shape
+    X_normalized, mean = normalize(X)
+    S = (X_normalized.T @ X_normalized) / N
+    eig_vals, eig_vecs = eig(S)
+    principal_vals, principal_components = np.real(eig_vals[:num_components]), np.real(eig_vecs[:,:num_components])
+    reconst_X = reconstruct(X_normalized, principal_components) + mean
+    return reconst_X, mean, principal_vals, principal_components
+```
+
+### 주성분 개수에 따른 이미지 복원 및 MSE
+
+```python
+# MSE 계산 함수
+def mse(predict, actual):
+    return np.square(predict - actual).sum(axis=1).mean()
+
+loss = []
+reconstructions = []
+X = images[:1000]
+
+for num_component in range(1, 100, 5):
+    reconst, _, _, _ = PCA(X, num_component)
+    error = mse(reconst, X)
+    reconstructions.append(reconst)
+    print(f'n = {num_component:d}, reconstruction_error = {error:f}')
+    loss.append((num_component, error))
+
+loss = np.asarray(loss)
+
+# MSE 시각화
+fig, ax = plt.subplots()
+ax.plot(loss[:,0], loss[:,1]);
+ax.axhline(10, linestyle='--', color='r', linewidth=2)
+ax.xaxis.set_ticks(np.arange(1, 100, 5));
+ax.set(xlabel='num_components', ylabel='MSE', title='MSE vs number of principal components');
+```
+- **결과:** 주성분 개수가 약 41개일 때 MSE가 10 이하로 떨어지며 기울기가 완만해진다. 이는 784차원의 원본 이미지를 약 41개의 주성분만으로도 충분히 복원 가능함을 의미한다.
+
+---
+
+## 5. 🎨 매니폴드 학습(Manifold Learning)과 t-SNE
+
+- **매니폴드(Manifold, 다양체)** 는 국소적으로 유클리드 공간과 닮은 위상 공간을 의미한다.
+- 매니폴드 학습은 고차원 데이터가 실제로는 저차원의 매니폴드에 임베딩되어 있다고 가정하고, 이 저차원 구조를 찾아내는 비선형 차원 축소 기법이다.
+- **t-SNE(t-Distributed Stochastic Neighbor Embedding)** 는 시각화를 목적으로 널리 사용되는 매니폴드 학습 알고리즘으로, 고차원 공간에서 비슷한 데이터 구조는 저차원 공간에서도 가깝게 유지되도록 맵핑한다.
+
+### t-SNE 실습: 숫자 데이터셋
+
+```python
+from sklearn.datasets import load_digits
+from sklearn.manifold import TSNE
+import matplotlib.patheffects as PathEffects
+
+# 데이터 로드
+digits = load_digits()
+X_digits = digits.data
+y_digits = digits.target
+
+# t-SNE 모델 생성 및 변환
+tsne = TSNE(n_components=2, init='pca', random_state=123)
+X_digits_tsne = tsne.fit_transform(X_digits)
+
+# t-SNE 결과 시각화
+def plot_projection(x, colors):
+  f = plt.figure(figsize=(8,8))
+  ax = plt.subplot(aspect='equal')
+  for i in range(10):
+    plt.scatter(x[colors==i, 0],
+                x[colors==i, 1])
+  for i in range(10):
+    xtext, ytext = np.median(x[colors==i, :], axis=0)
+    txt = ax.text(xtext, ytext, str(i), fontsize=24)
+    txt.set_path_effects([
+        PathEffects.Stroke(linewidth=5, foreground="w"),
+        PathEffects.Normal()])
+
+plot_projection(X_digits_tsne, y_digits)
+plt.show()
+```
+- **결과:** t-SNE를 통해 64차원의 숫자 데이터를 2차원으로 시각화한 결과, 같은 숫자끼리 잘 군집을 이루는 것을 확인할 수 있다.
+
+---
+
+## 6. 🧑 PCA 응용: 고유 얼굴 (Eigenface)
+
+- PCA를 얼굴 이미지에 적용하여 **고유 얼굴(Eigenface)** 이라는 주요 특성을 추출할 수 있다.
+- 이는 얼굴 인식 시스템 등에서 활용된다.
+
+```python
+from sklearn.datasets import fetch_olivetti_faces
+
+# 데이터 로드
+faces_all = fetch_olivetti_faces()
+K = 20 # 특정 인물 선택
+faces = faces_all.images[faces_all.target == K]
+
+# 얼굴 이미지 시각화
+N = 2
+M = 5
+fig = plt.figure(figsize=(10, 5))
+plt.subplots_adjust(top=1, bottom=0, hspace=0, wspace=0.05)
+for n in range(N*M):
+    ax = fig.add_subplot(N, M, n+1)
+    ax.imshow(faces[n], cmap=plt.cm.bone)
+    ax.grid(False)
+    ax.xaxis.set_ticks([])
+    ax.yaxis.set_ticks([])
+plt.tight_layout()
+plt.show()
+```
+
+---
+
+## 7. 🩺 PCA 응용: 위스콘신 유방암 데이터셋 (파이프라인)
+
+- `StandardScaler`, `PCA`, `LogisticRegression`을 `make_pipeline`으로 연결하여 데이터 전처리, 차원 축소, 모델 학습 과정을 한 번에 효율적으로 처리한다.
+- 30개의 특성을 가진 유방암 데이터셋을 2개의 주성분으로 축소하여 분류 모델의 성능을 확인한다.
+
+```python
+from sklearn.datasets import load_breast_cancer
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
+from sklearn.pipeline import make_pipeline
+from sklearn.model_selection import train_test_split
+
+# 데이터 로드 및 분할
+cancer = load_breast_cancer()
+X_train, X_test, y_train, y_test = train_test_split(
+    cancer.data, cancer.target, test_size=0.2, random_state=42
+)
+
+# 파이프라인 생성 및 학습
+pipe = make_pipeline(StandardScaler(), PCA(n_components=2), LogisticRegression())
+pipe.fit(X_train, y_train)
+
+# 예측 및 평가
+print("Train Score:", pipe.score(X_train, y_train))
+print("Test Score:", pipe.score(X_test, y_test))
+
+# PCA 변환 데이터 확인
+pca = pipe.named_steps['pca']
+X_pca = pca.transform(StandardScaler().fit_transform(cancer.data))
+pca_df = pd.DataFrame(X_pca, columns=['PC1', 'PC2'])
+print(pca_df.head())
+```
+- **결과:** 30개의 특성을 2개로 줄였음에도 불구하고, 테스트 데이터에 대해 약 97.4%의 높은 정확도를 보였다. 파이프라인을 통해 전체 워크플로우를 간결하게 구성할 수 있었다.
+
+---
+
+## 8. ✍️ 요약 정리
 
 - **차원의 저주**는 고차원 데이터에서 발생하는 희소성 문제로, 모델 성능 저하의 원인이 된다.
-- **PCA**는 데이터의 분산을 최대한 보존하는 주성분을 추출하여 효과적으로 차원을 축소하는 기법이다.
-- 와인 데이터셋 실습 결과, 13개 특성을 단 2개의 주성분으로 줄였음에도 분류 모델의 정확도가 거의 유지되어 PCA의 효율성을 확인했다.
+- **PCA**는 데이터의 분산을 최대한 보존하는 주성분을 추출하여 효과적으로 차원을 축소하는 선형 기법이다.
+- **매니폴드 학습(t-SNE)** 은 데이터의 국소적 구조를 보존하며 시각화에 유용한 비선형 차원 축소 기법이다.
+- 붓꽃, MNIST, 유방암 데이터셋 실습 결과, PCA를 통해 특성의 수를 크게 줄여도 모델의 성능이 크게 저하되지 않거나, 시각화를 통해 데이터의 구조를 성공적으로 파악할 수 있었다.
+- **파이프라인** 을 사용하면 데이터 전처리, 차원 축소, 모델 학습 과정을 체계적이고 효율적으로 관리할 수 있다. 성공! 🎉
